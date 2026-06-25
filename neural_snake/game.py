@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -58,6 +57,9 @@ class SnakeGame:
     last_distance: float = 0.0
     episode_index: int = 0
     history: list[EpisodeResult] = field(default_factory=list)
+    best_episode_score: int = 0
+    mean_episode_score: float = 0.0
+    mean_episode_reward: float = 0.0
 
     def __post_init__(self) -> None:
         self.grid_size = self.config.GRID_SIZE
@@ -69,7 +71,7 @@ class SnakeGame:
 
     @property
     def state_size(self) -> int:
-        return 19
+        return 21
 
     @property
     def action_size(self) -> int:
@@ -354,7 +356,7 @@ class SnakeGame:
             screen.blit(surface, (x, y))
             y += surface.get_height() + 8
 
-        self._draw_progress(screen, x, panel_rect.bottom - 92, panel_rect.width - 36)
+        self._draw_progress(screen, x, panel_rect.bottom - 92, panel_rect.width - 36, agent)
 
         if self.game_over:
             overlay = pygame.Surface((self.board_px, self.board_px), pygame.SRCALPHA)
@@ -365,14 +367,22 @@ class SnakeGame:
             screen.blit(banner, (self.board_origin[0] + self.board_px // 2 - banner.get_width() // 2, self.board_origin[1] + 120))
             screen.blit(hint, (self.board_origin[0] + self.board_px // 2 - hint.get_width() // 2, self.board_origin[1] + 170))
 
-    def _draw_progress(self, screen: pygame.Surface, x: int, y: int, width: int) -> None:
+    def _draw_progress(self, screen: pygame.Surface, x: int, y: int, width: int, agent: SnakeAgent) -> None:
         bar_height = 16
         outer = pygame.Rect(x, y, width, bar_height)
         inner = outer.inflate(-4, -4)
         pygame.draw.rect(screen, (56, 64, 82), outer, border_radius=8)
-        fill_width = int(inner.width * max(0.0, min(1.0, 1.0 - self.config.EPSILON_MIN if self.mode == "train" else 0.0)))
+        if self.mode == "train":
+            progress = (self.config.EPSILON_START - agent.stats.epsilon) / max(
+                1e-6,
+                self.config.EPSILON_START - self.config.EPSILON_MIN,
+            )
+            progress = max(0.0, min(1.0, progress))
+        else:
+            progress = 0.0
+        fill_width = int(inner.width * progress)
         pygame.draw.rect(screen, self.config.ACCENT_COLOR, pygame.Rect(inner.x, inner.y, fill_width, inner.height), border_radius=6)
-        label = f"Training intensity: {fill_width}/{inner.width}"
+        label = f"Training progress: {int(progress * 100)}%"
         text = pygame.font.SysFont("arial", 16).render(label, True, self.config.MUTED_TEXT_COLOR)
         screen.blit(text, (x, y - 24))
 
@@ -383,5 +393,11 @@ class SnakeGame:
             self.reset_episode()
 
     def update_stats(self) -> None:
-        if self.score > 0:
-            pass
+        if not self.history:
+            return
+
+        recent_scores = [episode.score for episode in self.history[-20:]]
+        recent_rewards = [episode.reward for episode in self.history[-20:]]
+        self.best_episode_score = max(recent_scores, default=0)
+        self.mean_episode_score = float(sum(recent_scores) / len(recent_scores)) if recent_scores else 0.0
+        self.mean_episode_reward = float(sum(recent_rewards) / len(recent_rewards)) if recent_rewards else 0.0
