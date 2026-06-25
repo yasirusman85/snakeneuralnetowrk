@@ -1,30 +1,42 @@
 # Neural Snake
 
-A polished Snake game powered by a small neural network trained with deep Q-learning.
+Advanced Snake with a modular Python game core, FastAPI backend, and React frontend.
 
-## Features
-- Human play mode with keyboard controls
-- AI training mode with live metrics
-- Replay memory and target network
-- Save/load model checkpoints
-- Visualized grid, score, episode stats, and training progress
+## Folder structure
+- [game/](game) — pygame game, RL agent, environment, renderer, and service layer
+- [backend/](backend) — FastAPI API for status, reset, and training control
+- [frontend/](frontend) — React + Vite dashboard scaffold
+- [shared/](shared) — optional shared utilities and contracts
 
-## Run
-1. Install dependencies:
+## Run the game
+1. Install Python dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 2. Start the game:
    ```bash
-   python main.py
+   python -m game.main
    ```
 
-## Controls
-- Arrow keys or WASD: move in human mode
-- `T`: toggle training mode
-- `SPACE`: pause/resume
-- `R`: reset episode
-- `S`: save model
-- `L`: load model
-- `ESC`: quit
-# snakeneuralnetowrk
+## Run the backend
+```bash
+uvicorn backend.app.main:app --reload
+```
+
+## Run the frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+## What the frontend can do
+- Show live training metrics
+- Control training start/stop/reset
+- Display checkpoints and scores
+- Render charts for reward and epsilon
+
+## Next upgrade path
+- Add WebSocket updates from FastAPI to React
+- Move model checkpoints to a dedicated storage layer
+- Add a proper training scheduler and experiment tracking

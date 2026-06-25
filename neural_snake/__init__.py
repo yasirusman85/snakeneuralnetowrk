@@ -1,7 +1,5 @@
-"""Neural Snake package."""
+"""Legacy compatibility layer for the modular Neural Snake layout."""
 
-from .config import Config
-from .game import SnakeGame
-from .ai import SnakeAgent
+from game import Config, SnakeAgent, SnakeEnvironment, SnakeGameService
 
-__all__ = ["Config", "SnakeGame", "SnakeAgent"]
+__all__ = ["Config", "SnakeAgent", "SnakeEnvironment", "SnakeGameService"]
