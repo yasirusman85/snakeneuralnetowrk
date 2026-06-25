@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from .agent import SnakeAgent
 from .config import Config
 from .environment import EpisodeResult, SnakeEnvironment
-from .renderer import SnakeRenderer
 
 
 @dataclass
@@ -15,7 +15,13 @@ class SnakeGameService:
     def __post_init__(self) -> None:
         self.environment = SnakeEnvironment(self.config, mode="train")
         self.agent = SnakeAgent(self.environment.state_size, self.environment.action_size, self.config)
-        self.renderer = SnakeRenderer(self.environment)
+        self.renderer: Any = None
+        try:
+            from .renderer import SnakeRenderer
+
+            self.renderer = SnakeRenderer(self.environment)
+        except Exception:
+            self.renderer = None
         self.agent.load(self.config.SAVE_PATH)
 
     def snapshot(self) -> dict[str, object]:
@@ -49,6 +55,24 @@ class SnakeGameService:
             self.environment.history.append(EpisodeResult(score=env.score, steps=env.episode_steps, reward=env.episode_reward, done=True))
             self.environment.update_stats()
             self.environment.reset_episode()
+        return result
+
+    def train(self, episodes: int, render: bool = False) -> None:
+        _ = render
+        for _episode in range(episodes):
+            while not self.environment.game_over:
+                self.step_training()
+            self.environment.reset_episode()
+
+    def step_test(self) -> EpisodeResult:
+        """Run one step in greedy (test) mode: no learning, no exploration."""
+        env = self.environment
+        state = env.get_state()
+        action = self.agent.act(state, training=False)
+        result = env.step(action)
+        if result.done:
+            self.agent.stats.episode += 1
+            self.agent.stats.best_score = max(self.agent.stats.best_score, env.score)
         return result
 
     def save(self) -> None:

@@ -6,6 +6,7 @@ import pygame
 
 from .config import Config
 from .service import SnakeGameService
+from .renderer import SnakeRenderer
 
 
 def main() -> None:
@@ -14,6 +15,8 @@ def main() -> None:
 
     config = Config()
     service = SnakeGameService(config)
+    if service.renderer is None:
+        service.renderer = SnakeRenderer(service.environment)
     env = service.environment
     screen = pygame.display.set_mode((env.window_width, env.window_height))
     clock = pygame.time.Clock()
@@ -21,12 +24,11 @@ def main() -> None:
     small_font = pygame.font.SysFont("arial", 18)
 
     running = True
-    training_mode = True
+    mode = "train"  # "train" or "test"
     paused = False
-    service.environment.mode = "train"
 
     while running:
-        fps = config.TRAIN_FPS if training_mode else config.FPS
+        fps = config.TRAIN_FPS if mode == "train" else config.FPS
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -36,22 +38,22 @@ def main() -> None:
                 elif event.key == pygame.K_SPACE:
                     paused = not paused
                 elif event.key == pygame.K_t:
-                    training_mode = not training_mode
-                    service.environment.mode = "train" if training_mode else "human"
+                    # Cycle: train <-> test
+                    mode = "test" if mode == "train" else "train"
+                    service.reset()
                 elif event.key == pygame.K_r:
                     service.reset()
                 elif event.key == pygame.K_s:
                     service.save()
                 elif event.key == pygame.K_l:
                     service.load()
-                elif not training_mode:
-                    service.environment.set_direction_from_key(event.key)
 
         if not paused:
-            if training_mode:
+            if mode == "train":
                 service.step_training()
-            elif not service.environment.game_over:
-                service.environment.update_human()
+            elif mode == "test":
+                if not service.environment.game_over:
+                    service.step_test()
 
         service.renderer.render(screen, font, small_font, service.agent)
         pygame.display.set_caption(
